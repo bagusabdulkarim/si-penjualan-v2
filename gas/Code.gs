@@ -466,24 +466,26 @@ var PesanApi = {
     var pesan = findById_('pesan', 'id_pesan', body.id_pesan);
     if (!pesan) err_('Pesanan tidak ditemukan.');
     if (pesan.status !== 'draft') err_('Pesanan sudah difinalisasi, tidak dapat diubah.');
-    var produk = findById_('produk', 'id_produk', body.id_produk);
-    if (!produk) err_('Produk tidak ditemukan.');
-    // Validasi stok di muka (aturan bisnis #5); validasi final tetap di finalize().
-    var detilLama = readAll_('detil').filter(function (d) {
-      return String(d.id_pesan) === String(body.id_pesan) &&
-             String(d.id_produk) === String(body.id_produk);
-    })[0];
-    var totalMinta = jumlah + (detilLama ? Number(detilLama.jumlah) : 0);
-    if (totalMinta > Number(produk.stock)) {
-      err_('Stok tidak mencukupi. Tersedia: ' + produk.stock + ' ' + produk.satuan + '.');
-    }
-    if (detilLama) {
-      updateById_('detil', 'id_detil', detilLama.id_detil, { jumlah: totalMinta });
-      return { id_detil: String(detilLama.id_detil), merged: true };
-    }
     var lock = LockService.getScriptLock();
     lock.waitLock(10000);
     try {
+      // Semua dibaca/ditulis DI DALAM lock: penggabungan baris + validasi stok
+      // konsisten walau dua kasir menambah produk yang sama persis bersamaan.
+      var produk = findById_('produk', 'id_produk', body.id_produk);
+      if (!produk) err_('Produk tidak ditemukan.');
+      // Validasi stok di muka (aturan bisnis #5); validasi final tetap di finalize().
+      var detilLama = readAll_('detil').filter(function (d) {
+        return String(d.id_pesan) === String(body.id_pesan) &&
+               String(d.id_produk) === String(body.id_produk);
+      })[0];
+      var totalMinta = jumlah + (detilLama ? Number(detilLama.jumlah) : 0);
+      if (totalMinta > Number(produk.stock)) {
+        err_('Stok tidak mencukupi. Tersedia: ' + produk.stock + ' ' + produk.satuan + '.');
+      }
+      if (detilLama) {
+        updateById_('detil', 'id_detil', detilLama.id_detil, { jumlah: totalMinta });
+        return { id_detil: String(detilLama.id_detil), merged: true };
+      }
       var id = nextId_('DTL', 'seq_detil');
       // Snapshot harga: salin harga produk SAAT INI (aturan bisnis #1).
       appendObj_('detil', { id_detil: id, id_pesan: body.id_pesan,
@@ -520,22 +522,30 @@ var PesanApi = {
         return String(d.id_pesan) === String(body.id_pesan);
       });
       if (!detils.length) err_('Pesanan kosong, tambahkan barang terlebih dahulu.');
-      // Validasi ulang stok untuk SEMUA detil sebelum ada yang dikurangi.
-      var prods = {};
+      // Agregasi jumlah per produk dulu: satu produk bisa muncul di >1 baris
+      // detil (mis. dua kasir menambah bersamaan). Validasi & pengurangan
+      // dilakukan SEKALI per produk agar stok tidak pernah minus.
+      var butuh = {};
       detils.forEach(function (d) {
-        var p = findById_('produk', 'id_produk', d.id_produk);
-        if (!p) err_('Produk tidak ditemukan: ' + d.id_produk);
-        if (Number(p.stock) < Number(d.jumlah)) {
-          err_('Stok tidak mencukupi untuk "' + p.nm_produk +
-               '". Tersedia: ' + p.stock + ', diminta: ' + d.jumlah + '.');
-        }
-        prods[d.id_produk] = p;
+        var k = String(d.id_produk);
+        butuh[k] = (butuh[k] || 0) + Number(d.jumlah);
       });
-      // Kurangi stok.
-      detils.forEach(function (d) {
-        var p = prods[d.id_produk];
-        updateById_('produk', 'id_produk', d.id_produk,
-          { stock: Number(p.stock) - Number(d.jumlah) });
+      // Validasi ulang stok untuk SEMUA produk sebelum ada yang dikurangi.
+      var prods = {};
+      Object.keys(butuh).forEach(function (idProduk) {
+        var p = findById_('produk', 'id_produk', idProduk);
+        if (!p) err_('Produk tidak ditemukan: ' + idProduk);
+        if (Number(p.stock) < butuh[idProduk]) {
+          err_('Stok tidak mencukupi untuk "' + p.nm_produk +
+               '". Tersedia: ' + p.stock + ', diminta: ' + butuh[idProduk] + '.');
+        }
+        prods[idProduk] = p;
+      });
+      // Kurangi stok sekali per produk.
+      Object.keys(butuh).forEach(function (idProduk) {
+        var p = prods[idProduk];
+        updateById_('produk', 'id_produk', idProduk,
+          { stock: Number(p.stock) - butuh[idProduk] });
       });
       var total = detils.reduce(function (s, d) {
         return s + Number(d.jumlah) * Number(d.harga);
