@@ -3,7 +3,7 @@
 import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { me, logout, ROLE_LABEL } from '@/lib/client-api';
+import { logout, ROLE_LABEL } from '@/lib/client-api';
 
 /**
  * Navbar aplikasi. Disembunyikan di halaman /login dan saat belum login.
@@ -31,9 +31,20 @@ function NavInner() {
       return;
     }
     let alive = true;
-    me()
-      .then((u) => alive && setUser(u))
-      .catch(() => alive && setUser(null));
+    // Fetch langsung (tanpa helper me()) agar tamu di halaman publik
+    // tidak di-redirect paksa ke /login — nav cukup disembunyikan.
+    fetch('/api/auth/me')
+      .then(async (res) => {
+        if (!res.ok) {
+          if (alive) setUser(null);
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (alive) setUser(json.ok ? json.user : null);
+      })
+      .catch(() => {
+        if (alive) setUser(null);
+      });
     return () => {
       alive = false;
     };
