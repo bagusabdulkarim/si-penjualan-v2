@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { gas, me } from '@/lib/client-api';
 import { Modal, Field, Alert, Loading, Empty, DeleteButton } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 const STATUS_LABEL = { draft: 'Draft', final: 'Final' };
 
@@ -110,48 +111,76 @@ export default function PesananPage() {
       ) : rows.length === 0 ? (
         <Empty text="Belum ada pesanan. Klik + Pesanan Baru untuk mulai." />
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Tanggal</th>
-                <th>Status</th>
-                <th style={{ width: 170 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id_pesan}>
-                  <td>
-                    <Link href={`/transaksi/pesanan/${r.id_pesan}`}>{r.id_pesan}</Link>
-                  </td>
-                  <td className="text-muted small">{String(r.tgl_pesan).slice(0, 16)}</td>
-                  <td>
-                    <span
-                      className={`badge ${r.status === 'draft' ? 'text-bg-warning' : 'text-bg-success'}`}
-                    >
-                      {STATUS_LABEL[r.status] || r.status}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <Link
-                        className="btn btn-sm btn-outline-primary"
-                        href={`/transaksi/pesanan/${r.id_pesan}`}
-                      >
-                        {r.status === 'draft' ? 'Kelola' : 'Lihat'}
-                      </Link>
-                      {canDelete && r.status === 'draft' && (
-                        <DeleteButton busy={deleting} onDelete={() => remove(r)} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataList
+          rows={rows}
+          keyOf={(r) => r.id_pesan}
+          columns={[
+            {
+              header: 'ID',
+              render: (r) => (
+                <Link href={`/transaksi/pesanan/${r.id_pesan}`}>{r.id_pesan}</Link>
+              ),
+            },
+            {
+              header: 'Tanggal',
+              render: (r) => (
+                <span className="text-muted small">{String(r.tgl_pesan).slice(0, 16)}</span>
+              ),
+            },
+            {
+              header: 'Status',
+              render: (r) => (
+                <span
+                  className={`badge ${r.status === 'draft' ? 'text-bg-warning' : 'text-bg-success'}`}
+                >
+                  {STATUS_LABEL[r.status] || r.status}
+                </span>
+              ),
+            },
+            {
+              header: 'Aksi',
+              render: (r) => (
+                <div className="d-flex gap-2">
+                  <Link
+                    className="btn btn-sm btn-outline-primary"
+                    href={`/transaksi/pesanan/${r.id_pesan}`}
+                  >
+                    {r.status === 'draft' ? 'Kelola' : 'Lihat'}
+                  </Link>
+                  {canDelete && r.status === 'draft' && (
+                    <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          renderCard={(r) => (
+            <>
+              <div className="d-flex justify-content-between align-items-center">
+                <Link href={`/transaksi/pesanan/${r.id_pesan}`} className="fw-medium">
+                  {r.id_pesan}
+                </Link>
+                <span
+                  className={`badge ${r.status === 'draft' ? 'text-bg-warning' : 'text-bg-success'}`}
+                >
+                  {STATUS_LABEL[r.status] || r.status}
+                </span>
+              </div>
+              <div className="text-muted small mb-1">{String(r.tgl_pesan).slice(0, 16)}</div>
+              <div className="d-flex gap-2 mt-1">
+                <Link
+                  className="btn btn-sm btn-outline-primary"
+                  href={`/transaksi/pesanan/${r.id_pesan}`}
+                >
+                  {r.status === 'draft' ? 'Kelola' : 'Lihat'}
+                </Link>
+                {canDelete && r.status === 'draft' && (
+                  <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                )}
+              </div>
+            </>
+          )}
+        />
       )}
 
       <Modal

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { gas, rupiah, ROLE_LABEL } from '@/lib/client-api';
 import { Alert, Loading, Empty } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 function todayStr() {
   const d = new Date();
@@ -158,39 +159,67 @@ export default function LaporanPage() {
               </div>
             </div>
           </div>
-          <div className="table-responsive">
-            <table className="table table-striped table-hover align-middle small">
-              <thead>
-                <tr>
-                  <th>ID Faktur</th>
-                  <th>Tanggal</th>
-                  <th>Kasir</th>
-                  <th className="text-end">Total</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {result.data.map((r) => (
-                  <tr key={r.id_faktur}>
-                    <td>
-                      <Link href={`/transaksi/faktur/${r.id_faktur}`} className="no-print-link">
-                        {r.id_faktur}
-                      </Link>
-                      <span className="d-none d-print-inline">{r.id_faktur}</span>
-                    </td>
-                    <td className="text-muted">{String(r.tgl_faktur).slice(0, 10)}</td>
-                    <td>{userMap[r.id_user]?.nama || r.id_user || '—'}</td>
-                    <td className="text-end">{rupiah(r.total)}</td>
-                    <td>
-                      <span className={`badge ${r.lunas ? 'text-bg-success' : 'text-bg-warning'}`}>
-                        {r.lunas ? 'Lunas' : 'Belum bayar'}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+          <DataList
+            rows={result.data}
+            keyOf={(r) => r.id_faktur}
+            pageSize={15}
+            columns={[
+              {
+                header: 'ID Faktur',
+                render: (r) => (
+                  <>
+                    <Link
+                      href={`/transaksi/faktur/${r.id_faktur}`}
+                      className="no-print-link"
+                    >
+                      {r.id_faktur}
+                    </Link>
+                    <span className="d-none d-print-inline">{r.id_faktur}</span>
+                  </>
+                ),
+              },
+              {
+                header: 'Tanggal',
+                render: (r) => (
+                  <span className="text-muted">{String(r.tgl_faktur).slice(0, 10)}</span>
+                ),
+              },
+              {
+                header: 'Kasir',
+                render: (r) => userMap[r.id_user]?.nama || r.id_user || '—',
+              },
+              {
+                header: 'Total',
+                thClassName: 'text-end',
+                tdClassName: 'text-end',
+                render: (r) => rupiah(r.total),
+              },
+              {
+                header: 'Status',
+                render: (r) => (
+                  <span className={`badge ${r.lunas ? 'text-bg-success' : 'text-bg-warning'}`}>
+                    {r.lunas ? 'Lunas' : 'Belum bayar'}
+                  </span>
+                ),
+              },
+            ]}
+            renderCard={(r) => (
+              <>
+                <div className="d-flex justify-content-between align-items-center">
+                  <Link href={`/transaksi/faktur/${r.id_faktur}`} className="fw-medium">
+                    {r.id_faktur}
+                  </Link>
+                  <span className={`badge ${r.lunas ? 'text-bg-success' : 'text-bg-warning'}`}>
+                    {r.lunas ? 'Lunas' : 'Belum bayar'}
+                  </span>
+                </div>
+                <div className="text-muted small">
+                  {String(r.tgl_faktur).slice(0, 10)} • {userMap[r.id_user]?.nama || '—'}
+                </div>
+                <div className="fw-medium mt-1">{rupiah(r.total)}</div>
+              </>
+            )}
+          />
           <p className="text-muted small no-print">
             Periode {result.dari} s/d {result.sampai} • {result.jumlah_faktur} faktur • pendapatan
             lunas {rupiah(result.total_pendapatan_lunas)}

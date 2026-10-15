@@ -4,7 +4,8 @@ import { useEffect, useState, Suspense } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { gas, rupiah } from '@/lib/client-api';
-import { Alert, Loading, Empty, DeleteButton } from '@/components/ui';
+import { Alert, Loading, Empty, DeleteButton, Modal, Field } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 /** Detail pesanan: kelola item (draft) + finalisasi menjadi faktur. */
 export default function PesananDetailPage() {
@@ -170,32 +171,47 @@ function DetailInner() {
       {detil.length === 0 ? (
         <Empty text="Belum ada barang di pesanan ini." />
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>Produk</th>
-                <th className="text-end">Harga</th>
-                <th className="text-end">Jumlah</th>
-                <th className="text-end">Subtotal</th>
-                {isDraft && <th style={{ width: 100 }}>Aksi</th>}
-              </tr>
-            </thead>
-            <tbody>
-              {detil.map((d) => (
-                <tr key={d.id_detil}>
-                  <td className="fw-medium">{prodMap[d.id_produk]?.nm_produk || d.id_produk}</td>
-                  <td className="text-end">{rupiah(d.harga)}</td>
-                  <td className="text-end">{d.jumlah}</td>
-                  <td className="text-end">{rupiah(Number(d.jumlah) * Number(d.harga))}</td>
-                  {isDraft && (
-                    <td>
+        <DataList
+          rows={detil}
+          keyOf={(d) => d.id_detil}
+          pageSize={8}
+          columns={[
+            {
+              header: 'Produk',
+              render: (d) => (
+                <span className="fw-medium">{prodMap[d.id_produk]?.nm_produk || d.id_produk}</span>
+              ),
+            },
+            {
+              header: 'Harga',
+              thClassName: 'text-end',
+              tdClassName: 'text-end',
+              render: (d) => rupiah(d.harga),
+            },
+            {
+              header: 'Jumlah',
+              thClassName: 'text-end',
+              tdClassName: 'text-end',
+              render: (d) => d.jumlah,
+            },
+            {
+              header: 'Subtotal',
+              thClassName: 'text-end',
+              tdClassName: 'text-end',
+              render: (d) => rupiah(Number(d.jumlah) * Number(d.harga)),
+            },
+            ...(isDraft
+              ? [
+                  {
+                    header: 'Aksi',
+                    render: (d) => (
                       <DeleteButton busy={busy} onDelete={() => removeItem(d)} />
-                    </td>
-                  )}
-                </tr>
-              ))}
-            </tbody>
+                    ),
+                  },
+                ]
+              : []),
+          ]}
+          tfoot={
             <tfoot>
               <tr>
                 <th colSpan={3} className="text-end">
@@ -205,8 +221,32 @@ function DetailInner() {
                 {isDraft && <td />}
               </tr>
             </tfoot>
-          </table>
-        </div>
+          }
+          cardFooter={
+            <div className="d-flex justify-content-between">
+              <strong>Total</strong>
+              <strong>{rupiah(total)}</strong>
+            </div>
+          }
+          renderCard={(d) => (
+            <>
+              <div className="d-flex justify-content-between align-items-center gap-2">
+                <span className="fw-medium">
+                  {prodMap[d.id_produk]?.nm_produk || d.id_produk}
+                </span>
+                {isDraft && <DeleteButton busy={busy} onDelete={() => removeItem(d)} />}
+              </div>
+              <div className="d-flex justify-content-between small text-muted mt-1">
+                <span>
+                  {d.jumlah} × {rupiah(d.harga)}
+                </span>
+                <span className="fw-medium text-dark">
+                  {rupiah(Number(d.jumlah) * Number(d.harga))}
+                </span>
+              </div>
+            </>
+          )}
+        />
       )}
 
       <Modal show={showForm} title="Tambah Barang" onClose={() => setShowForm(false)}>

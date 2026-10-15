@@ -3,8 +3,18 @@
 import { useEffect, useState } from 'react';
 import { gas, rupiah } from '@/lib/client-api';
 import { Modal, Field, Alert, Loading, Empty, DeleteButton } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 const EMPTY_FORM = { nm_produk: '', satuan: 'pcs', harga: '', stock: '' };
+
+/** Badge stok: merah bila habis. Dipakai di tabel desktop & kartu HP. */
+function StockBadge({ stock }) {
+  return (
+    <span className={`badge ${Number(stock) <= 0 ? 'text-bg-danger' : 'text-bg-secondary'}`}>
+      {stock}
+    </span>
+  );
+}
 
 /** CRUD Produk — khusus admin (middleware + server menegakkan). */
 export default function ProdukPage() {
@@ -123,46 +133,65 @@ export default function ProdukPage() {
       ) : rows.length === 0 ? (
         <Empty text="Belum ada produk. Klik + Tambah untuk membuat yang pertama." />
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nama Produk</th>
-                <th>Satuan</th>
-                <th className="text-end">Harga</th>
-                <th className="text-end">Stok</th>
-                <th style={{ width: 140 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id_produk}>
-                  <td className="text-muted small">{r.id_produk}</td>
-                  <td className="fw-medium">{r.nm_produk}</td>
-                  <td>{r.satuan}</td>
-                  <td className="text-end">{rupiah(r.harga)}</td>
-                  <td className="text-end">
-                    <span className={`badge ${Number(r.stock) <= 0 ? 'text-bg-danger' : 'text-bg-secondary'}`}>
-                      {r.stock}
-                    </span>
-                  </td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => openEdit(r)}
-                      >
-                        Ubah
-                      </button>
-                      <DeleteButton busy={deleting} onDelete={() => remove(r)} />
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataList
+          rows={rows}
+          keyOf={(r) => r.id_produk}
+          columns={[
+            {
+              header: 'ID',
+              render: (r) => <span className="text-muted small">{r.id_produk}</span>,
+            },
+            { header: 'Nama Produk', render: (r) => <span className="fw-medium">{r.nm_produk}</span> },
+            { header: 'Satuan', render: (r) => r.satuan },
+            {
+              header: 'Harga',
+              thClassName: 'text-end',
+              tdClassName: 'text-end',
+              render: (r) => rupiah(r.harga),
+            },
+            {
+              header: 'Stok',
+              thClassName: 'text-end',
+              tdClassName: 'text-end',
+              render: (r) => <StockBadge stock={r.stock} />,
+            },
+            {
+              header: 'Aksi',
+              render: (r) => (
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => openEdit(r)}
+                  >
+                    Ubah
+                  </button>
+                  <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                </div>
+              ),
+            },
+          ]}
+          renderCard={(r) => (
+            <>
+              <div className="d-flex justify-content-between align-items-center">
+                <span className="fw-medium">{r.nm_produk}</span>
+                <StockBadge stock={r.stock} />
+              </div>
+              <div className="text-muted small mb-1">
+                {r.id_produk} • {r.satuan}
+              </div>
+              <div className="fw-medium">{rupiah(r.harga)}</div>
+              <div className="d-flex gap-2 mt-2">
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => openEdit(r)}
+                >
+                  Ubah
+                </button>
+                <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+              </div>
+            </>
+          )}
+        />
       )}
 
       <Modal

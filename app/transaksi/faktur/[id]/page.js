@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { gas, rupiah } from '@/lib/client-api';
 import { Alert, Loading } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 /** Detail faktur: bayar lunas + kuitansi + cetak struk thermal. */
 export default function FakturDetailPage() {
@@ -108,35 +109,67 @@ function DetailInner() {
           Pesanan: {faktur.id_pesan} • Tanggal: {String(faktur.tgl_faktur).slice(0, 16)}
         </p>
 
-        <div className="table-responsive mb-4">
-          <table className="table table-striped align-middle">
-            <thead>
-              <tr>
-                <th>Produk</th>
-                <th className="text-end">Harga</th>
-                <th className="text-end">Jumlah</th>
-                <th className="text-end">Subtotal</th>
-              </tr>
-            </thead>
-            <tbody>
-              {detil.map((d) => (
-                <tr key={d.id_detil}>
-                  <td>{prodMap[d.id_produk]?.nm_produk || d.id_produk}</td>
-                  <td className="text-end">{rupiah(d.harga)}</td>
-                  <td className="text-end">{d.jumlah}</td>
-                  <td className="text-end">{rupiah(Number(d.jumlah) * Number(d.harga))}</td>
+        <div className="mb-4">
+          <DataList
+            rows={detil}
+            keyOf={(d) => d.id_detil}
+            pageSize={8}
+            columns={[
+              {
+                header: 'Produk',
+                render: (d) => prodMap[d.id_produk]?.nm_produk || d.id_produk,
+              },
+              {
+                header: 'Harga',
+                thClassName: 'text-end',
+                tdClassName: 'text-end',
+                render: (d) => rupiah(d.harga),
+              },
+              {
+                header: 'Jumlah',
+                thClassName: 'text-end',
+                tdClassName: 'text-end',
+                render: (d) => d.jumlah,
+              },
+              {
+                header: 'Subtotal',
+                thClassName: 'text-end',
+                tdClassName: 'text-end',
+                render: (d) => rupiah(Number(d.jumlah) * Number(d.harga)),
+              },
+            ]}
+            tfoot={
+              <tfoot>
+                <tr>
+                  <th colSpan={3} className="text-end">
+                    Total
+                  </th>
+                  <th className="text-end">{rupiah(faktur.total)}</th>
                 </tr>
-              ))}
-            </tbody>
-            <tfoot>
-              <tr>
-                <th colSpan={3} className="text-end">
-                  Total
-                </th>
-                <th className="text-end">{rupiah(faktur.total)}</th>
-              </tr>
-            </tfoot>
-          </table>
+              </tfoot>
+            }
+            cardFooter={
+              <div className="d-flex justify-content-between">
+                <strong>Total</strong>
+                <strong>{rupiah(faktur.total)}</strong>
+              </div>
+            }
+            renderCard={(d) => (
+              <>
+                <div className="fw-medium">
+                  {prodMap[d.id_produk]?.nm_produk || d.id_produk}
+                </div>
+                <div className="d-flex justify-content-between small text-muted mt-1">
+                  <span>
+                    {d.jumlah} × {rupiah(d.harga)}
+                  </span>
+                  <span className="fw-medium text-dark">
+                    {rupiah(Number(d.jumlah) * Number(d.harga))}
+                  </span>
+                </div>
+              </>
+            )}
+          />
         </div>
       </div>
 

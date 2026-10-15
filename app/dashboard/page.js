@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { gas, rupiah } from '@/lib/client-api';
 import { Alert, Loading, Empty } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 function todayStr() {
   const d = new Date();
@@ -125,28 +126,44 @@ export default function DashboardPage() {
           {recent.length === 0 ? (
             <Empty text="Belum ada transaksi lunas pada periode ini." />
           ) : (
-            <div className="table-responsive">
-              <table className="table table-striped table-hover align-middle">
-                <thead>
-                  <tr>
-                    <th>ID Faktur</th>
-                    <th>Tanggal Bayar</th>
-                    <th className="text-end">Total</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {recent.map((r) => (
-                    <tr key={r.id_faktur}>
-                      <td>
-                        <Link href={`/transaksi/faktur/${r.id_faktur}`}>{r.id_faktur}</Link>
-                      </td>
-                      <td className="text-muted small">{String(r.tgl_kuitansi).slice(0, 16)}</td>
-                      <td className="text-end">{rupiah(r.total)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+            <DataList
+              rows={recent}
+              keyOf={(r) => r.id_faktur}
+              pageSize={10}
+              columns={[
+                {
+                  header: 'ID Faktur',
+                  render: (r) => (
+                    <Link href={`/transaksi/faktur/${r.id_faktur}`}>{r.id_faktur}</Link>
+                  ),
+                },
+                {
+                  header: 'Tanggal Bayar',
+                  render: (r) => (
+                    <span className="text-muted small">
+                      {String(r.tgl_kuitansi).slice(0, 16)}
+                    </span>
+                  ),
+                },
+                {
+                  header: 'Total',
+                  thClassName: 'text-end',
+                  tdClassName: 'text-end',
+                  render: (r) => rupiah(r.total),
+                },
+              ]}
+              renderCard={(r) => (
+                <>
+                  <Link href={`/transaksi/faktur/${r.id_faktur}`} className="fw-medium">
+                    {r.id_faktur}
+                  </Link>
+                  <div className="text-muted small">
+                    {String(r.tgl_kuitansi).slice(0, 16)}
+                  </div>
+                  <div className="fw-medium mt-1">{rupiah(r.total)}</div>
+                </>
+              )}
+            />
           )}
         </>
       )}

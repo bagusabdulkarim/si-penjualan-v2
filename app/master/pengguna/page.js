@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { gas, me, ROLE_LABEL } from '@/lib/client-api';
 import { Modal, Field, Alert, Loading, Empty, DeleteButton } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 const EMPTY_FORM = { nama: '', username: '', password: '', role: 'kasir' };
 
@@ -137,58 +138,95 @@ export default function PenggunaPage() {
       ) : rows.length === 0 ? (
         <Empty text="Belum ada pengguna." />
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nama</th>
-                <th>Username</th>
-                <th>Peran</th>
-                <th style={{ width: 220 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id_user}>
-                  <td className="text-muted small">{r.id_user}</td>
-                  <td className="fw-medium">
-                    {r.nama}
-                    {r.id_user === selfId && (
-                      <span className="badge text-bg-info ms-2">Anda</span>
-                    )}
-                  </td>
-                  <td>{r.username}</td>
-                  <td>
-                    <span className="badge text-bg-secondary">{ROLE_LABEL[r.role] || r.role}</span>
-                  </td>
-                  <td>
-                    <div className="d-flex gap-2 flex-wrap">
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => openEdit(r)}
-                      >
-                        Ubah
-                      </button>
-                      <button
-                        className="btn btn-sm btn-outline-warning"
-                        onClick={() => {
-                          setResetTarget(r);
-                          setNewPassword('');
-                        }}
-                      >
-                        Reset PW
-                      </button>
-                      {r.id_user !== selfId && (
-                        <DeleteButton busy={deleting} onDelete={() => remove(r)} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataList
+          rows={rows}
+          keyOf={(r) => r.id_user}
+          columns={[
+            {
+              header: 'ID',
+              render: (r) => <span className="text-muted small">{r.id_user}</span>,
+            },
+            {
+              header: 'Nama',
+              render: (r) => (
+                <span className="fw-medium">
+                  {r.nama}
+                  {r.id_user === selfId && (
+                    <span className="badge text-bg-info ms-2">Anda</span>
+                  )}
+                </span>
+              ),
+            },
+            { header: 'Username', render: (r) => r.username },
+            {
+              header: 'Peran',
+              render: (r) => (
+                <span className="badge text-bg-secondary">{ROLE_LABEL[r.role] || r.role}</span>
+              ),
+            },
+            {
+              header: 'Aksi',
+              render: (r) => (
+                <div className="d-flex gap-2 flex-wrap">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => openEdit(r)}
+                  >
+                    Ubah
+                  </button>
+                  <button
+                    className="btn btn-sm btn-outline-warning"
+                    onClick={() => {
+                      setResetTarget(r);
+                      setNewPassword('');
+                    }}
+                  >
+                    Reset PW
+                  </button>
+                  {r.id_user !== selfId && (
+                    <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          renderCard={(r) => (
+            <>
+              <div className="fw-medium">
+                {r.nama}
+                {r.id_user === selfId && (
+                  <span className="badge text-bg-info ms-2">Anda</span>
+                )}
+              </div>
+              <div className="text-muted small mb-1">
+                {r.username} • {r.id_user}
+              </div>
+              <div className="mb-1">
+                <span className="badge text-bg-secondary">{ROLE_LABEL[r.role] || r.role}</span>
+              </div>
+              <div className="d-flex gap-2 flex-wrap mt-2">
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => openEdit(r)}
+                >
+                  Ubah
+                </button>
+                <button
+                  className="btn btn-sm btn-outline-warning"
+                  onClick={() => {
+                    setResetTarget(r);
+                    setNewPassword('');
+                  }}
+                >
+                  Reset PW
+                </button>
+                {r.id_user !== selfId && (
+                  <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                )}
+              </div>
+            </>
+          )}
+        />
       )}
 
       <Modal

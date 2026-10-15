@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { gas, me } from '@/lib/client-api';
 import { Modal, Field, Alert, Loading, Empty, DeleteButton } from '@/components/ui';
+import { DataList } from '@/components/DataList';
 
 const EMPTY_FORM = { nama: '', alamat: '', telepon: '', email: '' };
 
@@ -107,44 +108,59 @@ export default function PelangganPage() {
       ) : rows.length === 0 ? (
         <Empty text="Belum ada pelanggan. Klik + Tambah untuk membuat yang pertama." />
       ) : (
-        <div className="table-responsive">
-          <table className="table table-striped table-hover align-middle">
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Nama</th>
-                <th>Alamat</th>
-                <th>Telepon</th>
-                <th>Email</th>
-                <th style={{ width: 140 }}>Aksi</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((r) => (
-                <tr key={r.id_pelanggan}>
-                  <td className="text-muted small">{r.id_pelanggan}</td>
-                  <td className="fw-medium">{r.nama}</td>
-                  <td>{r.alamat || '—'}</td>
-                  <td>{r.telepon || '—'}</td>
-                  <td>{r.email || '—'}</td>
-                  <td>
-                    <div className="d-flex gap-2">
-                      <button
-                        className="btn btn-sm btn-outline-primary"
-                        onClick={() => openEdit(r)}
-                      >
-                        Ubah
-                      </button>
-                      {canDelete && (
-                        <DeleteButton busy={deleting} onDelete={() => remove(r)} />
-                      )}
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <DataList
+          rows={rows}
+          keyOf={(r) => r.id_pelanggan}
+          columns={[
+            {
+              header: 'ID',
+              render: (r) => <span className="text-muted small">{r.id_pelanggan}</span>,
+            },
+            { header: 'Nama', render: (r) => <span className="fw-medium">{r.nama}</span> },
+            { header: 'Alamat', render: (r) => r.alamat || '—' },
+            { header: 'Telepon', render: (r) => r.telepon || '—' },
+            { header: 'Email', render: (r) => r.email || '—' },
+            {
+              header: 'Aksi',
+              render: (r) => (
+                <div className="d-flex gap-2">
+                  <button
+                    className="btn btn-sm btn-outline-primary"
+                    onClick={() => openEdit(r)}
+                  >
+                    Ubah
+                  </button>
+                  {canDelete && (
+                    <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                  )}
+                </div>
+              ),
+            },
+          ]}
+          renderCard={(r) => (
+            <>
+              <div className="fw-medium">{r.nama}</div>
+              <div className="text-muted small mb-1">{r.id_pelanggan}</div>
+              {r.alamat && <div className="small">{r.alamat}</div>}
+              {(r.telepon || r.email) && (
+                <div className="small text-muted">
+                  {[r.telepon, r.email].filter(Boolean).join(' • ')}
+                </div>
+              )}
+              <div className="d-flex gap-2 mt-2">
+                <button
+                  className="btn btn-sm btn-outline-primary"
+                  onClick={() => openEdit(r)}
+                >
+                  Ubah
+                </button>
+                {canDelete && (
+                  <DeleteButton busy={deleting} onDelete={() => remove(r)} />
+                )}
+              </div>
+            </>
+          )}
+        />
       )}
 
       <Modal
