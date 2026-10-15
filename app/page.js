@@ -68,14 +68,24 @@ export default function Home() {
       <h2 className="h6 text-muted text-uppercase mb-3">Transaksi</h2>
       <div className="row g-3 mb-4">
         <div className="col-12 col-md-4">
-          <div className="card shadow-sm h-100 opacity-75">
-            <div className="card-body">
-              <h3 className="h6 card-title">
-                🧾 Pesanan <span className="badge text-bg-secondary ms-1">Fase 4</span>
-              </h3>
-              <p className="card-text text-muted small mb-0">Segera hadir</p>
+          <Link href="/transaksi/pesanan" className="text-decoration-none">
+            <div className="card shadow-sm h-100">
+              <div className="card-body">
+                <h3 className="h6 card-title">🧾 Pesanan</h3>
+                <p className="card-text text-muted small mb-0">Buat & kelola pesanan</p>
+              </div>
             </div>
-          </div>
+          </Link>
+        </div>
+        <div className="col-12 col-md-4">
+          <Link href="/transaksi/faktur" className="text-decoration-none">
+            <div className="card shadow-sm h-100">
+              <div className="card-body">
+                <h3 className="h6 card-title">💳 Faktur & Kuitansi</h3>
+                <p className="card-text text-muted small mb-0">Bayar & cetak kuitansi</p>
+              </div>
+            </div>
+          </Link>
         </div>
       </div>
 

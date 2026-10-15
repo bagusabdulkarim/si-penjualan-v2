@@ -3,3 +3,44 @@
 body {
   background-color: #f8f9fa;
 }
+
+/* --- Struk kuitansi (ramah printer thermal 80mm) --- */
+.receipt {
+  max-width: 320px;
+  background: #fff;
+  border: 1px dashed #999;
+  padding: 12px 14px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 13px;
+  color: #000;
+}
+
+@media print {
+  body {
+    background: #fff;
+  }
+  body * {
+    visibility: hidden;
+  }
+  .receipt,
+  .receipt * {
+    visibility: visible;
+  }
+  .receipt {
+    position: absolute;
+    left: 0;
+    top: 0;
+    max-width: 72mm;
+    width: 72mm;
+    border: none;
+    padding: 0;
+  }
+  .no-print {
+    display: none !important;
+  }
+}
+
+@page {
+  size: 80mm auto;
+  margin: 4mm;
+}

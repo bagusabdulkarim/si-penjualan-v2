@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Suspense } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { me, logout, ROLE_LABEL } from '@/lib/client-api';
@@ -10,10 +10,20 @@ import { me, logout, ROLE_LABEL } from '@/lib/client-api';
  * Menu disesuaikan peran (server tetap menegakkan ulang setiap aksi).
  */
 export default function AppNav() {
+  // usePathname() butuh Suspense agar prerender build tidak gagal (Next 16).
+  return (
+    <Suspense fallback={null}>
+      <NavInner />
+    </Suspense>
+  );
+}
+
+function NavInner() {
   const pathname = usePathname();
   const [user, setUser] = useState(null);
   const [open, setOpen] = useState(false);
   const [dropOpen, setDropOpen] = useState(false);
+  const [trxOpen, setTrxOpen] = useState(false);
 
   useEffect(() => {
     if (pathname === '/login') {
@@ -30,7 +40,10 @@ export default function AppNav() {
   }, [pathname]);
 
   useEffect(() => setOpen(false), [pathname]);
-  useEffect(() => setDropOpen(false), [pathname]);
+  useEffect(() => {
+    setDropOpen(false);
+    setTrxOpen(false);
+  }, [pathname]);
 
   if (pathname === '/login' || !user) return null;
 
@@ -88,6 +101,28 @@ export default function AppNav() {
                     </Link>
                   </li>
                 )}
+              </ul>
+            </li>
+            <li className={`nav-item dropdown${trxOpen ? ' show' : ''}`}>
+              <span
+                className="nav-link dropdown-toggle"
+                role="button"
+                onClick={() => setTrxOpen(!trxOpen)}
+                style={{ cursor: 'pointer' }}
+              >
+                Transaksi
+              </span>
+              <ul className={`dropdown-menu${trxOpen ? ' show' : ''}`}>
+                <li>
+                  <Link className="dropdown-item" href="/transaksi/pesanan">
+                    Pesanan
+                  </Link>
+                </li>
+                <li>
+                  <Link className="dropdown-item" href="/transaksi/faktur">
+                    Faktur & Kuitansi
+                  </Link>
+                </li>
               </ul>
             </li>
             {canSeeLaporan && (
