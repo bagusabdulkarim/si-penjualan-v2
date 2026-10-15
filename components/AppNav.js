@@ -128,14 +128,14 @@ function NavInner() {
             {canSeeLaporan && (
               <>
                 <li className="nav-item">
-                  <span className="nav-link disabled" title="Segera hadir (Fase 5)">
+                  <Link className={linkCls('/dashboard')} href="/dashboard">
                     Dashboard
-                  </span>
+                  </Link>
                 </li>
                 <li className="nav-item">
-                  <span className="nav-link disabled" title="Segera hadir (Fase 5)">
+                  <Link className={linkCls('/laporan')} href="/laporan">
                     Laporan
-                  </span>
+                  </Link>
                 </li>
               </>
             )}

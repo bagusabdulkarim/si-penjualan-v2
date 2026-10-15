@@ -35,8 +35,22 @@ body {
     border: none;
     padding: 0;
   }
+  .laporan-print,
+  .laporan-print * {
+    visibility: visible;
+  }
+  .laporan-print {
+    position: absolute;
+    left: 0;
+    top: 0;
+    width: 100%;
+  }
   .no-print {
     display: none !important;
+  }
+  .no-print-link {
+    text-decoration: none;
+    color: inherit;
   }
 }
 

@@ -94,14 +94,24 @@ export default function Home() {
           <h2 className="h6 text-muted text-uppercase mb-3">Pemantauan</h2>
           <div className="row g-3">
             <div className="col-12 col-md-4">
-              <div className="card shadow-sm h-100 opacity-75">
-                <div className="card-body">
-                  <h3 className="h6 card-title">
-                    📊 Dashboard <span className="badge text-bg-secondary ms-1">Fase 5</span>
-                  </h3>
-                  <p className="card-text text-muted small mb-0">Segera hadir</p>
+              <Link href="/dashboard" className="text-decoration-none">
+                <div className="card shadow-sm h-100">
+                  <div className="card-body">
+                    <h3 className="h6 card-title">📊 Dashboard</h3>
+                    <p className="card-text text-muted small mb-0">Ringkasan pendapatan</p>
+                  </div>
                 </div>
-              </div>
+              </Link>
+            </div>
+            <div className="col-12 col-md-4">
+              <Link href="/laporan" className="text-decoration-none">
+                <div className="card shadow-sm h-100">
+                  <div className="card-body">
+                    <h3 className="h6 card-title">📑 Laporan</h3>
+                    <p className="card-text text-muted small mb-0">Rekap penjualan per periode</p>
+                  </div>
+                </div>
+              </Link>
             </div>
           </div>
         </>
