@@ -25,10 +25,13 @@ export async function POST(req) {
   }
 
   const result = await callGas('auth.login', { username, password });
-  if (!result.ok) {
+  if (!result.ok || !result.data || !result.data.token) {
     // Samarkan: kredensial salah vs gangguan layanan dibedakan di status saja.
     const status = result.configError || result.networkError ? 502 : 401;
-    return NextResponse.json({ ok: false, message: result.message }, { status });
+    return NextResponse.json(
+      { ok: false, message: result.message || 'Login gagal.' },
+      { status }
+    );
   }
 
   const { token, user } = result.data;
