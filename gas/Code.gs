@@ -47,7 +47,7 @@ function doPost(e) {
     // Token rahasia bersama — pertahanan lapis pertama (dipegang server Next.js).
     var props = PropertiesService.getScriptProperties();
     var apiToken = String(props.getProperty('API_TOKEN') || '');
-    if (!apiToken || body.apiToken !== apiToken) {
+    if (!apiToken || !safeEqual_(body.apiToken, apiToken)) {
       return json_({ ok: false, message: 'Akses ditolak.' });
     }
 
@@ -81,6 +81,51 @@ function json_(obj) {
 
 function now_() {
   return Utilities.formatDate(new Date(), 'Asia/Jakarta', 'yyyy-MM-dd HH:mm:ss');
+}
+
+/**
+ * Normalisasi nilai tanggal menjadi "yyyy-MM-dd" untuk perbandingan/filter.
+ * WAJIB dipakai: getValues() mengembalikan objek Date untuk sel tanggal,
+ * dan String(date) BUKAN format ISO (mis. "Wed Oct 15 2026 ..."), sehingga
+ * slice(0,10) / indexOf(prefix) langsung pada String(date) selalu salah.
+ */
+function dateKey_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+    return Utilities.formatDate(v, 'Asia/Jakarta', 'yyyy-MM-dd');
+  }
+  return String(v).slice(0, 10);
+}
+
+/** Nilai epoch (ms) untuk pengurutan tanggal; 0 bila tidak valid. */
+function timeVal_(v) {
+  if (Object.prototype.toString.call(v) === '[object Date]' && !isNaN(v.getTime())) {
+    return v.getTime();
+  }
+  var t = Date.parse(String(v));
+  return isNaN(t) ? 0 : t;
+}
+
+/**
+ * Cegah formula injection: string yang diawali = + - @ diberi apostrof
+ * agar Sheets memperlakukannya sebagai teks biasa, bukan formula aktif.
+ */
+function safeCell_(v) {
+  if (typeof v === 'string' && /^[=+\-@]/.test(v)) return "'" + v;
+  return v;
+}
+
+/** Perbandingan string constant-time (anti timing attack). */
+function safeEqual_(a, b) {
+  var x = String(a), y = String(b);
+  if (x.length !== y.length) return false;
+  var diff = 0;
+  for (var i = 0; i < x.length; i++) diff |= x.charCodeAt(i) ^ y.charCodeAt(i);
+  return diff === 0;
+}
+
+/** Validasi panjang maksimum string (server menegakkan; UI juga punya maxLength). */
+function maxLen_(v, max, field) {
+  if (String(v == null ? '' : v).length > max) err_('Kolom ' + field + ' maksimal ' + max + ' karakter.');
 }
 
 function err_(message) {
@@ -156,7 +201,7 @@ function appendObj_(tab, obj) {
   var sh = ss_().getSheetByName(TABS[tab]);
   var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
   sh.appendRow(head.map(function (h) {
-    return obj.hasOwnProperty(h) ? obj[h] : '';
+    return obj.hasOwnProperty(h) ? safeCell_(obj[h]) : '';
   }));
 }
 
@@ -167,7 +212,7 @@ function updateById_(tab, idCol, id, updates) {
   var head = sh.getRange(1, 1, 1, sh.getLastColumn()).getValues()[0].map(String);
   Object.keys(updates).forEach(function (k) {
     var c = head.indexOf(String(k)) + 1;
-    if (c > 0) sh.getRange(r, c).setValue(updates[k]);
+    if (c > 0) sh.getRange(r, c).setValue(safeCell_(updates[k]));
   });
 }
 
@@ -203,7 +248,7 @@ function verifyPassword_(plain, stored) {
   if (parts.length !== 2) return false;
   var hex = bytesToHex_(Utilities.computeDigest(
     Utilities.DigestAlgorithm.SHA_256, parts[0] + String(plain)));
-  return hex === parts[1];
+  return safeEqual_(hex, parts[1]);
 }
 
 function bytesToHex_(bytes) {
@@ -289,7 +334,9 @@ var PenggunaApi = {
     needRole_(user, [ROLE.ADMIN]);
     need_(body, ['nama', 'username', 'password', 'role']);
     if (['admin', 'kasir', 'owner'].indexOf(body.role) === -1) err_('Role tidak valid.');
-    if (String(body.password).length < 6) err_('Password minimal 6 karakter.');
+    if (String(body.password).length < 8) err_('Password minimal 8 karakter.');
+    maxLen_(body.nama, 100, 'nama');
+    maxLen_(body.username, 50, 'username');
     var dupe = readAll_('pengguna').some(function (u) {
       return String(u.username) === String(body.username);
     });
@@ -306,6 +353,7 @@ var PenggunaApi = {
   update: function (body, user) {
     needRole_(user, [ROLE.ADMIN]);
     need_(body, ['id_user', 'nama', 'role']);
+    maxLen_(body.nama, 100, 'nama');
     var target = findById_('pengguna', 'id_user', body.id_user);
     if (!target) err_('Data tidak ditemukan.');
     if (['admin', 'kasir', 'owner'].indexOf(body.role) === -1) err_('Role tidak valid.');
@@ -313,6 +361,8 @@ var PenggunaApi = {
       err_('Anda tidak dapat mencabut peran admin diri sendiri.');
     }
     updateById_('pengguna', 'id_user', body.id_user, { nama: body.nama, role: body.role });
+    // Peran berubah -> cabut sesi agar hak akses baru berlaku segera.
+    if (String(target.role) !== String(body.role)) destroySessionForUser_(body.id_user);
     return { id_user: String(body.id_user) };
   },
   delete: function (body, user) {
@@ -325,12 +375,13 @@ var PenggunaApi = {
       err_('Tidak dapat menghapus admin terakhir.');
     }
     deleteById_('pengguna', 'id_user', body.id_user);
+    destroySessionForUser_(body.id_user); // cabut sesi akun yang dihapus
     return { id_user: String(body.id_user) };
   },
   resetPassword: function (body, user) {
     needRole_(user, [ROLE.ADMIN]);
     need_(body, ['id_user', 'password']);
-    if (String(body.password).length < 6) err_('Password minimal 6 karakter.');
+    if (String(body.password).length < 8) err_('Password minimal 8 karakter.');
     updateById_('pengguna', 'id_user', body.id_user, { password: hashPassword_(body.password) });
     destroySessionForUser_(body.id_user); // paksa login ulang di semua perangkat
     return { id_user: String(body.id_user) };
@@ -349,6 +400,10 @@ var PelangganApi = {
   create: function (body, user) {
     needRole_(user, [ROLE.ADMIN, ROLE.KASIR]);
     need_(body, ['nama']);
+    maxLen_(body.nama, 100, 'nama');
+    maxLen_(body.alamat, 255, 'alamat');
+    maxLen_(body.telepon, 20, 'telepon');
+    maxLen_(body.email, 100, 'email');
     var lock = LockService.getScriptLock();
     lock.waitLock(10000);
     try {
@@ -361,6 +416,10 @@ var PelangganApi = {
   update: function (body, user) {
     needRole_(user, [ROLE.ADMIN, ROLE.KASIR]);
     need_(body, ['id_pelanggan', 'nama']);
+    maxLen_(body.nama, 100, 'nama');
+    maxLen_(body.alamat, 255, 'alamat');
+    maxLen_(body.telepon, 20, 'telepon');
+    maxLen_(body.email, 100, 'email');
     updateById_('pelanggan', 'id_pelanggan', body.id_pelanggan,
       { nama: body.nama, alamat: body.alamat || '',
         telepon: body.telepon || '', email: body.email || '' });
@@ -383,6 +442,8 @@ var ProdukApi = {
   create: function (body, user) {
     needRole_(user, [ROLE.ADMIN]);
     need_(body, ['nm_produk', 'harga']);
+    maxLen_(body.nm_produk, 100, 'nm_produk');
+    maxLen_(body.satuan, 20, 'satuan');
     var harga = Number(body.harga), stock = Number(body.stock || 0);
     if (!(harga >= 0)) err_('Harga tidak valid.');
     if (!(stock >= 0 && Math.floor(stock) === stock)) err_('Stok harus bilangan bulat >= 0.');
@@ -398,6 +459,8 @@ var ProdukApi = {
   update: function (body, user) {
     needRole_(user, [ROLE.ADMIN]);
     need_(body, ['id_produk', 'nm_produk', 'harga', 'stock']);
+    maxLen_(body.nm_produk, 100, 'nm_produk');
+    maxLen_(body.satuan, 20, 'satuan');
     var harga = Number(body.harga), stock = Number(body.stock);
     if (!(harga >= 0)) err_('Harga tidak valid.');
     if (!(stock >= 0 && Math.floor(stock) === stock)) err_('Stok harus bilangan bulat >= 0.');
@@ -439,7 +502,7 @@ var PesanApi = {
 
   list: function (body, user) {
     var rows = readAll_('pesan').sort(function (a, b) {
-      return String(b.tgl_pesan).localeCompare(String(a.tgl_pesan));
+      return timeVal_(b.tgl_pesan) - timeVal_(a.tgl_pesan);
     });
     if (body.status) rows = rows.filter(function (p) { return p.status === body.status; });
     return rows;
@@ -579,7 +642,7 @@ var PesanApi = {
 var FakturApi = {
   list: function (body, user) {
     return readAll_('faktur').sort(function (a, b) {
-      return String(b.tgl_faktur).localeCompare(String(a.tgl_faktur));
+      return timeVal_(b.tgl_faktur) - timeVal_(a.tgl_faktur);
     });
   },
   get: function (body, user) {
@@ -645,7 +708,7 @@ var KuitansiApi = {
   },
   list: function (body, user) {
     return readAll_('kuitansi').sort(function (a, b) {
-      return String(b.tgl_kuitansi).localeCompare(String(a.tgl_kuitansi));
+      return timeVal_(b.tgl_kuitansi) - timeVal_(a.tgl_kuitansi);
     });
   },
   delete: function (body, user) {
@@ -667,7 +730,7 @@ var LaporanApi = {
     var ref = body.tanggal || now_().slice(0, 10); // yyyy-MM-dd
     var prefix = periode === 'bulan' ? ref.slice(0, 7) : ref;
     var kuitansis = readAll_('kuitansi').filter(function (k) {
-      return String(k.tgl_kuitansi).indexOf(prefix) === 0;
+      return dateKey_(k.tgl_kuitansi).indexOf(prefix) === 0;
     });
     var pendapatan = kuitansis.reduce(function (s, k) {
       return s + Number(k.jumlah_bayar);
@@ -691,7 +754,7 @@ var LaporanApi = {
     needRole_(user, [ROLE.ADMIN, ROLE.OWNER]);
     var dari = String(body.dari || '0000'), sampai = String(body.sampai || '9999');
     var fakturs = readAll_('faktur').filter(function (f) {
-      var t = String(f.tgl_faktur).slice(0, 10);
+      var t = dateKey_(f.tgl_faktur);
       return t >= dari && t <= sampai;
     });
     if (body.id_produk) {
@@ -713,14 +776,16 @@ var LaporanApi = {
     readAll_('kuitansi').forEach(function (k) {
       kuitansiOlehFaktur[String(k.id_faktur)] = k;
     });
-    var rows = fakturs.map(function (f) {
+    var rows = fakturs
+      .sort(function (a, b) { return timeVal_(b.tgl_faktur) - timeVal_(a.tgl_faktur); })
+      .map(function (f) {
       var p = pesans[String(f.id_pesan)] || {};
       var k = kuitansiOlehFaktur[String(f.id_faktur)];
       return { id_faktur: String(f.id_faktur), tgl_faktur: String(f.tgl_faktur),
         id_pesan: String(f.id_pesan), id_user: String(p.id_user || ''),
         id_pelanggan: String(p.id_pelanggan || ''), total: Number(f.total),
         lunas: !!k, tgl_kuitansi: k ? String(k.tgl_kuitansi) : '' };
-    }).sort(function (a, b) { return String(b.tgl_faktur).localeCompare(String(a.tgl_faktur)); });
+    });
     var totalPendapatan = rows.filter(function (r) { return r.lunas; })
       .reduce(function (s, r) { return s + r.total; }, 0);
     return { dari: dari, sampai: sampai, jumlah_faktur: rows.length,

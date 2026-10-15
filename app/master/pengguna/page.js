@@ -57,8 +57,8 @@ export default function PenggunaPage() {
       setError('Nama dan username wajib diisi.');
       return;
     }
-    if (!editing && form.password.length < 6) {
-      setError('Password minimal 6 karakter.');
+    if (!editing && form.password.length < 8) {
+      setError('Password minimal 8 karakter.');
       return;
     }
     setSaving(true);
@@ -102,8 +102,8 @@ export default function PenggunaPage() {
 
   async function doResetPassword(e) {
     e.preventDefault();
-    if (newPassword.length < 6) {
-      setError('Password baru minimal 6 karakter.');
+    if (newPassword.length < 8) {
+      setError('Password baru minimal 8 karakter.');
       return;
     }
     setSaving(true);
@@ -253,7 +253,7 @@ export default function PenggunaPage() {
             />
           </Field>
           {!editing && (
-            <Field label="Password * (min. 6 karakter)">
+            <Field label="Password * (min. 8 karakter)">
               <input
                 type="password"
                 className="form-control"
@@ -298,7 +298,7 @@ export default function PenggunaPage() {
           <p className="text-muted small">
             Pengguna akan dipaksa login ulang di semua perangkat setelah password diganti.
           </p>
-          <Field label="Password baru * (min. 6 karakter)">
+          <Field label="Password baru * (min. 8 karakter)">
             <input
               type="password"
               className="form-control"
