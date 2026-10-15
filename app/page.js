@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
-import { me, ROLE_LABEL } from '@/lib/client-api';
+import { ROLE_LABEL } from '@/lib/client-api';
 import { Loading } from '@/components/ui';
 import LandingPage from '@/components/LandingPage';
 
@@ -10,14 +10,30 @@ import LandingPage from '@/components/LandingPage';
  * Halaman awal:
  * - Tamu (belum login) -> landing page publik.
  * - Sudah login -> beranda dengan kartu menu sesuai peran.
+ *
+ * Catatan: cek sesi di sini pakai fetch langsung, bukan helper me(),
+ * karena me() me-redirect paksa ke /login saat 401.
  */
 export default function Home() {
   const [user, setUser] = useState(undefined); // undefined: masih cek, null: tamu
 
   useEffect(() => {
-    me()
-      .then(setUser)
-      .catch(() => setUser(null));
+    let alive = true;
+    fetch('/api/auth/me')
+      .then(async (res) => {
+        if (!res.ok) {
+          if (alive) setUser(null);
+          return;
+        }
+        const json = await res.json().catch(() => ({}));
+        if (alive) setUser(json.ok ? json.user : null);
+      })
+      .catch(() => {
+        if (alive) setUser(null);
+      });
+    return () => {
+      alive = false;
+    };
   }, []);
 
   if (user === undefined) return <Loading text="Memuat…" />;
