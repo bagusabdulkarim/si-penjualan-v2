@@ -4,19 +4,29 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { me, ROLE_LABEL } from '@/lib/client-api';
 import { Loading } from '@/components/ui';
+import LandingPage from '@/components/LandingPage';
 
-/** Beranda: sapaan + kartu menu sesuai peran. */
+/**
+ * Halaman awal:
+ * - Tamu (belum login) -> landing page publik.
+ * - Sudah login -> beranda dengan kartu menu sesuai peran.
+ */
 export default function Home() {
-  const [user, setUser] = useState(null);
+  const [user, setUser] = useState(undefined); // undefined: masih cek, null: tamu
 
   useEffect(() => {
     me()
       .then(setUser)
-      .catch(() => {});
+      .catch(() => setUser(null));
   }, []);
 
-  if (!user) return <Loading text="Memuat…" />;
+  if (user === undefined) return <Loading text="Memuat…" />;
+  if (user === null) return <LandingPage />;
 
+  return <Beranda user={user} />;
+}
+
+function Beranda({ user }) {
   const isAdmin = user.role === 'admin';
   const canSeeLaporan = user.role === 'admin' || user.role === 'owner';
 

@@ -20,7 +20,12 @@ export async function proxy(req) {
     return NextResponse.next();
   }
 
-  // Selain /login: wajib login.
+  // Halaman awal publik: tamu melihat landing page, yang login melihat beranda.
+  if (pathname === '/') {
+    return NextResponse.next();
+  }
+
+  // Selain itu: wajib login.
   if (!loggedIn) {
     const url = new URL('/login', req.url);
     return NextResponse.redirect(url);
